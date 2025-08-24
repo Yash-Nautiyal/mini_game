@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Use Toilet - City Patrol Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: #87CEEB;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        #gameContainer {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            background: linear-gradient(180deg, #87CEEB 0%, #90EE90 30%, #90EE90 100%);
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            image-rendering: pixelated;
+        }
+
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 100;
+            color: #fff;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, .7);
+            font-weight: bold;
+        }
+
+        #retryButton {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 100;
+            padding: 10px 20px;
+            font-size: 16px;
+            background: #FF6B6B;
+            color: #fff;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, .3);
+            transition: transform .1s;
+        }
+
+        #retryButton:hover {
+            transform: scale(1.05)
+        }
+
+        #retryButton:active {
+            transform: scale(.95)
+        }
+
+        #instructions {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            color: #fff;
+            font-size: 14px;
+            text-align: center;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, .7);
+            background: rgba(0, 0, 0, .5);
+            padding: 10px 20px;
+            border-radius: 10px;
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 200;
+            background: rgba(0, 0, 0, .8);
+            color: #fff;
+            padding: 30px;
+            border-radius: 15px;
+            text-align: center;
+            font-size: 24px;
+            display: none;
+        }
+
+        /* Win Banner (speech style + button) */
+        #winBanner {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 220;
+            display: none;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1b1b1b;
+            border-radius: 14px;
+            border: 2px solid #000;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, .35);
+            max-width: min(760px, 92vw);
+        }
+
+        #winLeft {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            align-items: flex-start
+        }
+
+        #winBanner .text {
+            font: 16px/1.45 "Courier New", monospace;
+            font-weight: 700;
+        }
+
+        #winPlayAgain {
+            padding: 8px 14px;
+            border: none;
+            border-radius: 10px;
+            background: #22c55e;
+            color: #fff;
+            font-weight: 800;
+            cursor: pointer;
+            box-shadow: 0 6px 16px #0006
+        }
+
+        #winPlayAgain:active {
+            transform: translateY(1px)
+        }
+
+        #officerFace {
+            width: 84px;
+            height: 84px;
+            image-rendering: pixelated;
+            min-width: 84px;
+            background: linear-gradient(135deg, #0b1a5a, #274472);
+            border: 2px solid #000;
+            border-radius: 10px;
+            position: relative;
+        }
+
+        #officerFace:before {
+            content: "";
+            position: absolute;
+            left: 18px;
+            top: 18px;
+            width: 48px;
+            height: 44px;
+            background:
+                radial-gradient(#000 60%, transparent 61%) 14px 18px/2px 2px no-repeat,
+                radial-gradient(#000 60%, transparent 61%) 32px 18px/2px 2px no-repeat,
+                linear-gradient(#ffdbac, #ffdbac) 8px 10px/32px 24px no-repeat,
+                linear-gradient(#ffd700, #ffd700) 24px 28px/6px 6px no-repeat,
+                linear-gradient(#0b1a5a, #0b1a5a) 6px -2px/40px 10px no-repeat,
+                linear-gradient(#7b4f2b, #7b4f2b) 8px 8px/32px 8px no-repeat;
+            image-rendering: pixelated;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas"></canvas>
+
+        <div id="ui">
+            <div>Caught: <span id="caught">0</span>/10</div>
+            <div>Lives: <span id="lives">3</span></div>
+        </div>
+
+        <button id="retryButton" onclick="restartGame()">🔄 Retry</button>
+
+        <div id="instructions">
+            Move: WASD / Arrows • Catch near a peeing youth • Avoid cars!
+        </div>
+
+        <div id="gameOver">
+            <h2 id="gameOverTitle">Game Over!</h2>
+            <p id="gameOverMessage"></p>
+            <button onclick="restartGame()"
+                style="padding:10px 20px;font-size:16px;margin-top:10px;background:#4CAF50;color:#fff;border:none;border-radius:5px;cursor:pointer;">Play
+                Again</button>
+        </div>
+
+        <!-- Win Banner (persists until Play Again) -->
+        <div id="winBanner">
+            <div id="winLeft">
+                <div class="text">
+                    <div style="font-size:18px;margin-bottom:6px;"><strong>Officer:</strong> Keep it clean!</div>
+                    Use public toilets. Open urination spreads disease, smells bad, and harms the city.
+                    Together we keep the sidewalks safe &amp; hygienic. 🚓✨
+                </div>
+                <button id="winPlayAgain" onclick="restartGame()">Play Again</button>
+            </div>
+            <div id="officerFace" aria-hidden="true"></div>
+        </div>
+    </div>
+
+    <script>
+        /* ===== Canvas + layout ===== */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let buildings = [];
+        let L = {};
+
+        function resize() {
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            recalcLayout(); generateBuildings();
+        }
+        window.addEventListener('resize', resize);
+
+        /* Layout numbers derived from size */
+        function recalcLayout() {
+            L.ROAD_TOP = canvas.height - 120;
+            L.ROAD_H = 80;
+            L.ROAD_BOTTOM = L.ROAD_TOP + L.ROAD_H;
+
+            L.TOP_WALK_TOP = L.ROAD_TOP - 20;
+            L.TOP_WALK_BOTTOM = L.ROAD_TOP;
+            L.BOTTOM_WALK_TOP = canvas.height - 40;
+            L.BOTTOM_WALK_BOTTOM = canvas.height - 20;
+
+            L.TOP_FEET_Y = L.TOP_WALK_BOTTOM - 2;
+            L.BOTTOM_FEET_Y = L.BOTTOM_WALK_TOP + 18;
+
+            L.LANE1_CENTER = L.ROAD_TOP + L.ROAD_H * 0.35;
+            L.LANE2_CENTER = L.ROAD_TOP + L.ROAD_H * 0.65;
+        }
+
+        /* Background buildings */
+        function generateBuildings() {
+            buildings = [];
+            const palette = [
+                '#b56551', // brick
+                '#9aa3a7', // concrete gray
+                '#c9b8a8', // beige
+                '#7a8793', // blue-gray
+                '#8d6e63', // brownstone
+                '#b0b5b8', // light gray
+                '#d7cfc2'  // light beige
+            ];
+            for (let i = 0; i < 8; i++) {
+                const bh = 150 + Math.random() * 120;
+                const b = {
+                    x: i * (canvas.width / 8),
+                    y: canvas.height - bh - 120,
+                    width: canvas.width / 8,
+                    height: bh,
+                    color: palette[i % palette.length],
+                    windows: []
+                };
+                for (let j = 0; j < Math.floor(b.width / 22); j++) {
+                    for (let k = 0; k < Math.floor(b.height / 26); k++) {
+                        if (Math.random() > 0.25) {
+                            b.windows.push({ x: b.x + 8 + j * 22, y: b.y + 8 + k * 26, width: 12, height: 16, lit: Math.random() > 0.88 });
+                        }
+                    }
+                }
+                buildings.push(b);
+            }
+        }
+        function drawBuilding(b) {
+            // vertical facade gradient
+            const g = ctx.createLinearGradient(0, b.y, 0, b.y + b.height);
+            const shade = (hex, f) => { // simple hex shade
+                const n = parseInt(hex.slice(1), 16);
+                let r = ((n >> 16) & 255), g = ((n >> 8) & 255), bl = n & 255;
+                r = Math.max(0, Math.min(255, Math.round(r + (f * 255))));
+                g = Math.max(0, Math.min(255, Math.round(g + (f * 255))));
+                bl = Math.max(0, Math.min(255, Math.round(bl + (f * 255))));
+                return `#${(r << 16 | g << 8 | bl).toString(16).padStart(6, '0')}`;
+            };
+            g.addColorStop(0, shade(b.color, 0.10));
+            g.addColorStop(1, shade(b.color, -0.10));
+
+            // facade
+            ctx.fillStyle = g;
+            ctx.fillRect(b.x, b.y, b.width, b.height);
+
+            // subtle side shadow strip
+            ctx.fillStyle = shade(b.color, -0.18);
+            ctx.fillRect(b.x + b.width - 10, b.y, 10, b.height);
+
+            // roofline
+            ctx.fillStyle = shade(b.color, -0.28);
+            ctx.fillRect(b.x, b.y - 4, b.width, 4);
+
+            // windows (mix of “glass” and “lit”)
+            b.windows.forEach(w => {
+                ctx.fillStyle = w.lit ? '#ffd36b' : 'rgba(170,195,210,0.85)';
+                ctx.fillRect(w.x, w.y, w.width, w.height);
+                ctx.fillStyle = 'rgba(0,0,0,0.15)'; // little mullions
+                ctx.fillRect(w.x + w.width * 0.5 - 1, w.y, 2, w.height);
+                ctx.fillRect(w.x, w.y + w.height * 0.5 - 1, w.width, 2);
+            });
+        }
+
+
+        /* ===== Game state ===== */
+        const hudCaught = document.getElementById('caught');
+        const hudLives = document.getElementById('lives');
+        const winBanner = document.getElementById('winBanner');
+
+        let gameState = {
+            player: { x: 100, y: 0, width: 32, height: 36, speed: 160, anim: 0, face: 'front' },
+            caught: 0, lives: 3,
+            cars: [], people: [], peeingPeople: [],
+            particles: [], confetti: [],
+            t: 0, last: performance.now(),
+            won: false
+        };
+        function placePlayerAtStation() { gameState.player.y = L.BOTTOM_FEET_Y - gameState.player.height; }
+        resize(); placePlayerAtStation();
+
+        /* ===== Input ===== */
+        const keys = {};
+        document.addEventListener('keydown', e => keys[e.key] = true);
+        document.addEventListener('keyup', e => keys[e.key] = false);
+
+        /* ===== Minimal SFX (confetti popper + tinkles, no loop) ===== */
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        function tone(f = 440, d = .12, t = 'square', v = .12) { const o = audioContext.createOscillator(), g = audioContext.createGain(); o.connect(g); g.connect(audioContext.destination); o.frequency.value = f; o.type = t; const n = audioContext.currentTime; g.gain.setValueAtTime(v, n); g.gain.exponentialRampToValueAtTime(.0001, n + d); o.start(n); o.stop(n + d) }
+        function playCatch() { tone(560, .12, 'sine', .18); setTimeout(() => tone(720, .1, 'sine', .18), 100) }
+        function playHit() { tone(160, .25, 'sawtooth', .22) }
+        function playConfettiSound() {
+            const ctxa = audioContext, t0 = ctxa.currentTime;
+
+            // burst of noise (pop)
+            const buf = ctxa.createBuffer(1, ctxa.sampleRate * 0.12, ctxa.sampleRate);
+            const data = buf.getChannelData(0);
+            for (let i = 0; i < data.length; i++) { data[i] = (Math.random() * 2 - 1) * (1 - i / data.length); }
+            const noise = ctxa.createBufferSource(); noise.buffer = buf;
+            const g = ctxa.createGain(); g.gain.value = 0.6;
+            noise.connect(g).connect(ctxa.destination); noise.start(t0);
+
+            // bright tinkles
+            [1046.5, 1318.5, 1568, 1760].forEach((f, i) => {
+                const o = ctxa.createOscillator(), gg = ctxa.createGain();
+                o.type = 'triangle'; o.frequency.setValueAtTime(f, t0 + 0.05 * i);
+                gg.gain.setValueAtTime(0.18, t0 + 0.05 * i);
+                gg.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.05 * i + 0.25);
+                o.connect(gg).connect(ctxa.destination);
+                o.start(t0 + 0.05 * i); o.stop(t0 + 0.05 * i + 0.26);
+            });
+        }
+        document.addEventListener('click', () => { if (audioContext.state === 'suspended') audioContext.resume(); }, { once: true });
+
+        /* ===== Draw helpers ===== */
+        function drawBuilding(b) { ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.width, b.height); ctx.fillStyle = '#FFD700'; b.windows.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height)); }
+        
+        
+        function drawBackground() {
+            // Dawn sky gradient - soft purples, pinks, and oranges
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#6A4C93');     // Deep purple at top
+            gradient.addColorStop(0.3, '#C06C84');   // Pink-purple in middle
+            gradient.addColorStop(0.6, '#F8B500');   // Golden orange
+            gradient.addColorStop(1, '#FFE66D');     // Light yellow at horizon
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw pre-generated buildings
+            buildings.forEach(building => {
+                drawBuilding(building);
+            });
+            
+            // Road
+            ctx.fillStyle = '#696969';
+            ctx.fillRect(0, canvas.height - 120, canvas.width, 80);
+            
+            // Road lines
+            ctx.fillStyle = '#FFFF00';
+            for (let i = 0; i < canvas.width; i += 40) {
+                ctx.fillRect(i, canvas.height - 82, 20, 4);
+            }
+            
+            // Sidewalks
+            ctx.fillStyle = '#D3D3D3';
+            ctx.fillRect(0, canvas.height - 140, canvas.width, 20);  // Top sidewalk
+            ctx.fillRect(0, canvas.height - 40, canvas.width, 20);   // Bottom sidewalk
+            
+            // Green grass area after bottom sidewalk
+            ctx.fillStyle = '#32CD32';  // Bright green grass
+            ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
+            
+            // Police station
+            ctx.fillStyle = '#4169E1';
+            ctx.fillRect(20, canvas.height - 200, 100, 60);
+            ctx.fillStyle = '#000080';
+            ctx.fillRect(30, canvas.height - 190, 80, 20);
+            ctx.fillStyle = '#FFF';
+            ctx.font = '12px Courier New';
+            ctx.fillText('POLICE', 35, canvas.height - 175);
+        }
+
+        /* RPG-ish sprites */
+        function drawCop(x, y, w, h, frame, face = 'front', flip = false) {
+            ctx.save();
+            if (flip) { ctx.translate(x + w, y); ctx.scale(-1, 1); x = 0; y = 0; }
+
+            // legs (2-frame walk)
+            ctx.fillStyle = '#333';
+            if (frame % 2 === 0) { ctx.fillRect(x + 6, y + h - 10, 6, 10); ctx.fillRect(x + w - 12, y + h - 9, 6, 9); }
+            else { ctx.fillRect(x + 5, y + h - 9, 6, 9); ctx.fillRect(x + w - 11, y + h - 10, 6, 10); }
+
+            // torso + arms
+            ctx.fillStyle = '#274472'; ctx.fillRect(x + 6, y + 14, w - 12, h - 20);
+            ctx.fillRect(x + 2, y + 18, 6, 6); ctx.fillRect(x + w - 8, y + 18, 6, 6);
+
+            if (face === 'back') {
+                // back of head
+                ctx.fillStyle = '#7b4f2b'; ctx.fillRect(x + 10, y + 6, w - 20, 6);
+            } else if (face === 'side') {
+                // right-facing side head (mirrored automatically when flip=true)
+                ctx.fillStyle = '#FFDBAC'; ctx.fillRect(x + 10, y + 6, w - 20, 10);
+                // single eye & tiny nose toward the front
+                ctx.fillStyle = '#000'; ctx.fillRect(x + w - 14, y + 9, 2, 2);   // eye
+                ctx.fillStyle = '#7b4f2b'; ctx.fillRect(x + w - 15, y + 11, 1, 1); // nose
+            } else {
+                // front
+                ctx.fillStyle = '#FFDBAC'; ctx.fillRect(x + 10, y + 6, w - 20, 10);
+                ctx.fillStyle = '#000'; ctx.fillRect(x + 13, y + 9, 2, 2); ctx.fillRect(x + w - 15, y + 9, 2, 2);
+            }
+
+            // cap + badge
+            ctx.fillStyle = '#0b1a5a'; ctx.fillRect(x + 8, y + 2, w - 16, 6);
+            ctx.fillStyle = '#ffd700'; ctx.fillRect(x + w - 16, y + 20, 3, 3);
+            ctx.restore();
+        }
+
+        function drawCitizen(x, y, w, h, frame, face = 'front', color = '#FF6B6B', flip = false) {
+            ctx.save(); if (flip) { ctx.translate(x + w, y); ctx.scale(-1, 1); x = 0; y = 0; }
+            ctx.fillStyle = '#333'; if (frame % 2 === 0) { ctx.fillRect(x + 5, y + h - 9, 6, 9); ctx.fillRect(x + w - 11, y + h - 10, 6, 10); } else { ctx.fillRect(x + 6, y + h - 10, 6, 10); ctx.fillRect(x + w - 12, y + h - 9, 6, 9); }
+            ctx.fillStyle = color; ctx.fillRect(x + 6, y + 14, w - 12, h - 20);
+            ctx.fillRect(x + 2, y + 18, 6, 6); ctx.fillRect(x + w - 8, y + 18, 6, 6);
+            if (face === 'front') { ctx.fillStyle = '#FFDBAC'; ctx.fillRect(x + 10, y + 6, w - 20, 10); ctx.fillStyle = '#000'; ctx.fillRect(x + 13, y + 9, 2, 2); ctx.fillRect(x + w - 15, y + 9, 2, 2); }
+            else { ctx.fillStyle = '#7b4f2b'; ctx.fillRect(x + 10, y + 6, w - 20, 6); }
+            ctx.fillStyle = '#ffb703'; ctx.fillRect(x + 10, y + 4, w - 20, 2);
+            ctx.restore();
+        }
+        function drawPeeStream(px, py, dir) {
+            const len = 18 + Math.sin(gameState.t * 7) * 2;
+            ctx.save(); ctx.strokeStyle = '#e6d10a'; ctx.lineWidth = 2; ctx.globalAlpha = 0.9 + 0.1 * Math.sin(gameState.t * 20);
+            ctx.beginPath();
+            if (dir === 'up') { ctx.moveTo(px, py); ctx.quadraticCurveTo(px - 2, py - len * 0.5, px, py - len); }
+            else { ctx.moveTo(px, py); ctx.quadraticCurveTo(px + 2, py + len * 0.5, px, py + len); }
+            ctx.stroke(); ctx.globalAlpha = 1; ctx.restore();
+        }
+
+        /* Cars / People */
+        function drawCar(car) {
+            const { x, y, width: w, height: h, color, dir, vx } = car;
+            // rounded body
+            ctx.save();
+            ctx.beginPath();
+            const r = 6;
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            // body gradient
+            const g = ctx.createLinearGradient(x, y, x, y + h);
+            const shade = (hex, f) => { const n = parseInt(hex.slice(1), 16); let r = ((n >> 16) & 255), g = ((n >> 8) & 255), b = n & 255; r = Math.max(0, Math.min(255, Math.round(r + (f * 255)))); g = Math.max(0, Math.min(255, Math.round(g + (f * 255)))); b = Math.max(0, Math.min(255, Math.round(b + (f * 255)))); return `#${(r << 16 | g << 8 | b).toString(16).padStart(6, '0')}`; };
+            g.addColorStop(0, shade(color, 0.10));
+            g.addColorStop(1, shade(color, -0.10));
+            ctx.fillStyle = g;
+            ctx.fill();
+
+            // windows (top strip)
+            ctx.fillStyle = '#c6d7e2';
+            ctx.fillRect(x + 10, y + 4, w - 20, h - 16);
+
+            // wheels
+            ctx.fillStyle = '#111';
+            ctx.beginPath(); ctx.arc(x + 16, y + h - 4, 5, 0, Math.PI * 2); ctx.fill();
+            ctx.beginPath(); ctx.arc(x + w - 16, y + h - 4, 5, 0, Math.PI * 2); ctx.fill();
+
+            // headlights / taillights based on direction
+            if (dir === 1) { // moving right → front on right
+                ctx.fillStyle = '#fffbe6'; ctx.fillRect(x + w - 6, y + 8, 4, 6);
+                ctx.fillStyle = '#ff3b30'; ctx.fillRect(x + 2, y + 8, 4, 6);
+            } else {
+                ctx.fillStyle = '#fffbe6'; ctx.fillRect(x + 2, y + 8, 4, 6);
+                ctx.fillStyle = '#ff3b30'; ctx.fillRect(x + w - 6, y + 8, 4, 6);
+            }
+
+            ctx.restore();
+        }
+
+        function spawnCar() {
+            const center = Math.random() < 0.5 ? L.LANE1_CENTER : L.LANE2_CENTER;
+            const h = 30, w = 84, topLeftY = Math.round(center - h / 2);
+            const dir = Math.random() < 0.5 ? 1 : -1; // 1→right, -1→left
+            const startX = (dir === 1) ? -w - 60 : canvas.width + 60;
+            const speed = 160 + Math.random() * 220; // px/sec
+
+            const bodyColors = ['#c0c6ca', '#e6e6e6', '#2c2f33', '#b23b3b', '#2f6db5', '#2fa05a', '#caa74e']; // silver, white, charcoal, red, blue, green, gold
+            gameState.cars.push({
+                x: startX, y: topLeftY, width: w, height: h,
+                vx: dir * speed, dir,
+                color: bodyColors[Math.floor(Math.random() * bodyColors.length)]
+            });
+        }
+
+        function spawnPerson() {
+            const w = 26, h = 36, isTop = Math.random() < 0.5;
+            const feetY = isTop ? L.TOP_FEET_Y : L.BOTTOM_FEET_Y;
+            const y = feetY - h;
+            const face = isTop ? 'back' : 'front';
+            const color = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'][Math.floor(Math.random() * 5)];
+            const dir = Math.random() < 0.5 ? 1 : -1;
+            const speed = 35 + Math.random() * 65;
+
+            gameState.people.push({
+                x: Math.random() * canvas.width,
+                y,
+                width: w, height: h,
+                vx: speed * dir,
+                lane: isTop ? 'top' : 'bottom',
+                face, color,
+                anim: 0,
+                state: 'walk',
+                peeCount: 0 // 👈 can pee at most 2 times
+            });
+        }
+
+        function convertWalkerToPeeing(peep) {
+            if (peep.peeCount >= 2) return; // already peed twice
+            const idx = gameState.people.indexOf(peep);
+            if (idx >= 0) gameState.people.splice(idx, 1);
+
+            gameState.peeingPeople.push({
+                x: peep.x, y: peep.y,
+                width: peep.width, height: peep.height,
+                color: peep.color,
+                face: (peep.lane === 'top' ? 'back' : 'front'),
+                peeDir: (peep.lane === 'top' ? 'up' : 'down'),
+                timer: 240 + Math.random() * 240,  // 4–8s-ish (can also end early)
+                peePhase: 0,
+                lane: peep.lane,
+                fromVX: peep.vx,
+                peeCount: peep.peeCount + 1 // increment count
+            });
+        }
+
+        function convertPeeingToWalker(pp) {
+            const baseSpeed = 35 + Math.random() * 65;
+            const dir = (pp.fromVX != null && pp.fromVX !== 0) ? Math.sign(pp.fromVX) : (Math.random() < 0.5 ? -1 : 1);
+            const lane = pp.lane || (pp.face === 'back' ? 'top' : 'bottom');
+            const y = (lane === 'top' ? L.TOP_FEET_Y : L.BOTTOM_FEET_Y) - pp.height;
+            const face = (lane === 'top' ? 'back' : 'front');
+
+            gameState.people.push({
+                x: pp.x, y,
+                width: pp.width, height: pp.height,
+                vx: dir * baseSpeed,
+                lane, face,
+                color: pp.color,
+                anim: 0,
+                state: 'walk',
+                peeCount: pp.peeCount // keep how many times they have peed
+            });
+        }
+
+
+        /* ===== Updates ===== */
+        function updatePlayer(dt) {
+            const p = gameState.player, sp = p.speed * dt;
+            const up = keys['w'] || keys['W'] || keys['ArrowUp'];
+            const dn = keys['s'] || keys['S'] || keys['ArrowDown'];
+            const lf = keys['a'] || keys['A'] || keys['ArrowLeft'];
+            const rt = keys['d'] || keys['D'] || keys['ArrowRight'];
+            if (up) { p.y -= sp; p.face = 'back'; }
+            if (dn) { p.y += sp; p.face = 'front'; }
+            if (lf) { p.x -= sp; }
+            if (rt) { p.x += sp; }
+
+            // ⛔ prevent going onto top sidewalk:
+            const minY = L.TOP_WALK_BOTTOM - p.height;       // top limit (road top)
+            const maxY = canvas.height - p.height;           // very bottom
+            p.x = Math.max(0, Math.min(canvas.width - p.width, p.x));
+            p.y = Math.max(minY, Math.min(maxY, p.y));
+
+            p.anim += dt * 12;
+        }
+        function updateCars(dt) {
+            const p = gameState.player;
+            gameState.cars = gameState.cars.filter(car => {
+                car.x += car.vx * dt;
+                // hit
+                if (car.x < p.x + p.width && car.x + car.width > p.x && car.y < p.y + p.height && car.y + car.height > p.y) {
+                    playHit(); gameState.lives--;
+                    gameState.player.x = 100; placePlayerAtStation();
+                    for (let i = 0; i < 12; i++) {
+                        gameState.particles.push({ x: p.x + p.width / 2, y: p.y + p.height / 2, vx: (Math.random() - 0.5) * 180, vy: (Math.random() - 0.5) * 180, life: 0.5, color: '#FF0000' });
+                    }
+                }
+                if (car.vx > 0 && car.x > canvas.width + 140) return false;
+                if (car.vx < 0 && car.x < -car.width - 140) return false;
+                return true;
+            });
+        }
+        function updatePeople(dt) {
+            gameState.people = gameState.people.filter(peep => {
+                if (peep.state === 'walk') {
+                    peep.x += peep.vx * dt;
+                    peep.anim += dt * 8;
+
+                    // lock to sidewalks + facing
+                    if (peep.lane === 'top') { peep.y = L.TOP_FEET_Y - peep.height; peep.face = 'back'; }
+                    else { peep.y = L.BOTTOM_FEET_Y - peep.height; peep.face = 'front'; }
+
+                    // walkers can start peeing only up to 2 times total
+                    if (peep.peeCount < 2 && Math.random() > 0.995 && gameState.peeingPeople.length < 4) {
+                        convertWalkerToPeeing(peep);
+                        return false; // moved to peeing array
+                    }
+                }
+
+                // remove only after they fully leave the screen
+                const offLeft = peep.x < -peep.width - 100;
+                const offRight = peep.x > canvas.width + 100;
+                return !(offLeft || offRight);
+            });
+        }
+
+        function updatePeeingPeople(dt) {
+            gameState.peeingPeople = gameState.peeingPeople.filter(pp => {
+                pp.timer -= 60 * dt;
+                pp.peePhase += dt * 10;
+
+                // caught by police → vanish immediately
+                const p = gameState.player;
+                const caught = (pp.x < p.x + p.width && pp.x + pp.width > p.x && pp.y < p.y + p.height && pp.y + pp.height > p.y);
+                if (caught) {
+                    playCatch();
+                    gameState.caught++;
+
+                    // small burst
+                    for (let i = 0; i < 16; i++) {
+                        gameState.particles.push({
+                            x: pp.x + pp.width / 2, y: pp.y + pp.height / 2,
+                            vx: (Math.random() - 0.5) * 200, vy: (Math.random() - 0.5) * 200,
+                            life: 0.6, color: '#00E676'
+                        });
+                    }
+                    return false; // disappear on catch
+                }
+
+                // MAY stop early randomly, or when timer runs out → resume walking
+                if (pp.timer <= 0 || Math.random() > 0.996) {
+                    convertPeeingToWalker(pp);
+                    return false;
+                }
+
+                return true; // keep peeing
+            });
+        }
+
+        function updateParticles(dt) {
+            gameState.particles = gameState.particles.filter(pt => {
+                pt.x += pt.vx * dt; pt.y += pt.vy * dt; pt.life -= dt; return pt.life > 0;
+            });
+        }
+
+        /* ===== Confetti & Win banner ===== */
+        function launchConfetti() {
+            gameState.confetti.length = 0;
+            const N = 240;
+            for (let i = 0; i < N; i++) {
+                gameState.confetti.push({
+                    x: Math.random() * canvas.width,
+                    y: -20 - Math.random() * 200,
+                    vx: (Math.random() - 0.5) * 60,
+                    vy: 120 + Math.random() * 180,
+                    r: Math.random() * Math.PI,
+                    a: 1,
+                    size: 3 + Math.random() * 3,
+                    color: ['#ff4757', '#ffa502', '#2ed573', '#1e90ff', '#a55eea'][Math.floor(Math.random() * 5)]
+                });
+            }
+            winBanner.style.display = 'flex';
+            playConfettiSound(); // 🔊 one-time confetti sound
+        }
+        function updateConfetti(dt) {
+            gameState.confetti = gameState.confetti.filter(c => {
+                c.x += c.vx * dt; c.y += c.vy * dt; c.r += dt * 6; c.a -= dt * 0.15;
+                return c.y < canvas.height + 30 && c.a > 0;
+            });
+        }
+        function drawConfetti() {
+            for (const c of gameState.confetti) {
+                ctx.save();
+                ctx.globalAlpha = Math.max(0, c.a);
+                ctx.translate(c.x, c.y); ctx.rotate(c.r);
+                ctx.fillStyle = c.color; ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size);
+                ctx.restore();
+            }
+        }
+
+        /* ===== Render ===== */
+        function render() {
+            drawBackground();
+
+            // cars
+            gameState.cars.forEach(drawCar);
+
+            // walkers
+            gameState.people.forEach(peep => {
+                const frame = Math.floor(peep.anim) % 2;
+                const flip = peep.vx < 0;
+                drawCitizen(peep.x, peep.y, peep.width, peep.height, frame, peep.face, peep.color, flip);
+            });
+
+            // peeing youths
+            gameState.peeingPeople.forEach(pp => {
+                drawCitizen(pp.x, pp.y, pp.width, pp.height, 0, pp.face, pp.color, false);
+                const up = (pp.peeDir === 'up');
+                const sx = pp.x + pp.width / 2;
+                const sy = up ? (pp.y + 8) : (pp.y + pp.height - 8);
+                drawPeeStream(sx, sy, up ? 'up' : 'down');
+
+                const bounce = Math.sin(gameState.t * 6) * 2;
+                ctx.fillStyle = '#D90429'; ctx.beginPath();
+                ctx.arc(pp.x + pp.width / 2, pp.y - 10 + bounce, 6, 0, Math.PI * 2); ctx.fill();
+                ctx.fillStyle = '#fff'; ctx.font = '10px Courier New'; ctx.fillText('!', pp.x + pp.width / 2 - 2, pp.y - 6 + bounce);
+            });
+
+            // player
+            // player
+            // player (side view when moving horizontally)
+            const p = gameState.player;
+            const pf = Math.floor(p.anim) % 2;
+
+            const left = (keys['a'] || keys['A'] || keys['ArrowLeft']);
+            const right = (keys['d'] || keys['D'] || keys['ArrowRight']);
+            const up = (keys['w'] || keys['W'] || keys['ArrowUp']);
+            const down = (keys['s'] || keys['S'] || keys['ArrowDown']);
+
+            const leftOnly = left && !right;
+            const rightOnly = right && !left;
+
+            let faceToDraw = p.face; // 'front' or 'back' from your vertical logic
+            let flip = false;
+
+            // If actively walking horizontally, use the side-facing sprite
+            if ((leftOnly || rightOnly) && !(up || down)) {
+                faceToDraw = 'side';
+                flip = leftOnly;   // flip when walking left
+            }
+
+            drawCop(p.x, p.y, p.width, p.height, pf, faceToDraw, flip);
+
+
+            // particles
+            gameState.particles.forEach(pt => {
+                ctx.globalAlpha = Math.max(0, pt.life * 2);
+                ctx.fillStyle = pt.color; ctx.fillRect(pt.x, pt.y, 4, 4);
+                ctx.globalAlpha = 1;
+            });
+
+            // confetti overlay
+            drawConfetti();
+
+            // HUD
+            hudCaught.textContent = gameState.caught;
+            hudLives.textContent = gameState.lives;
+        }
+
+        /* ===== End conditions ===== */
+        function checkGameEnd() {
+            if (!gameState.won && gameState.caught >= 10) {
+                gameState.won = true;
+                launchConfetti();     // 🎉 banner stays until player clicks Play Again
+                return true;
+            }
+            if (gameState.lives <= 0) {
+                document.getElementById('gameOverTitle').textContent = 'Game Over!';
+                document.getElementById('gameOverMessage').textContent = 'Be careful crossing the street! Try again.';
+                document.getElementById('gameOver').style.display = 'block';
+                return true;
+            }
+            return false;
+        }
+
+        /* ===== Loop ===== */
+        function gameLoop(now = performance.now()) {
+            const dt = Math.min(1 / 30, (now - gameState.last) / 1000);
+            gameState.last = now; gameState.t += dt;
+
+            if (!checkGameEnd()) {
+                updatePlayer(dt);
+                updateCars(dt);
+                updatePeople(dt);
+                updatePeeingPeople(dt);
+            }
+            updateParticles(dt);
+            updateConfetti(dt);
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        /* ===== Restart ===== */
+        function restartGame() {
+            winBanner.style.display = 'none';
+            gameState = {
+                player: { x: 100, y: L.BOTTOM_FEET_Y - 36, width: 32, height: 36, speed: 160, anim: 0, face: 'front' },
+                caught: 0, lives: 3, cars: [], people: [], peeingPeople: [],
+                particles: [], confetti: [], t: 0, last: performance.now(), won: false
+            };
+            document.getElementById('gameOver').style.display = 'none';
+        }
+
+        /* ===== Spawners ===== */
+        setInterval(() => {
+            if (Math.random() > 0.45) spawnCar();
+            if (Math.random() > 0.80) spawnCar(); // sometimes two at once
+        }, 1300);
+
+        setInterval(() => {
+            if (Math.random() > 0.15) spawnPerson();
+            if (Math.random() > 0.5) spawnPerson();
+        }, 900);
+
+        setInterval(() => {
+            if (Math.random() > 0.85 && gameState.peeingPeople.length < 4) {
+                const candidates = gameState.people.filter(p => p.state === 'walk' && p.peeCount < 2);
+                if (candidates.length) {
+                    convertWalkerToPeeing(candidates[Math.floor(Math.random() * candidates.length)]);
+                }
+            }
+        }, 2500);
+
+
+        /* ===== Boot ===== */
+        gameLoop();
+    </script>
+</body>
+
+</html>

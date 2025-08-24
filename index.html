@@ -363,8 +363,8 @@
 
         /* ===== Draw helpers ===== */
         function drawBuilding(b) { ctx.fillStyle = b.color; ctx.fillRect(b.x, b.y, b.width, b.height); ctx.fillStyle = '#FFD700'; b.windows.forEach(w => ctx.fillRect(w.x, w.y, w.width, w.height)); }
-        
-        
+
+
         function drawBackground() {
             // Dawn sky gradient - soft purples, pinks, and oranges
             const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -374,31 +374,31 @@
             gradient.addColorStop(1, '#FFE66D');     // Light yellow at horizon
             ctx.fillStyle = gradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
+
             // Draw pre-generated buildings
             buildings.forEach(building => {
                 drawBuilding(building);
             });
-            
+
             // Road
             ctx.fillStyle = '#696969';
             ctx.fillRect(0, canvas.height - 120, canvas.width, 80);
-            
+
             // Road lines
             ctx.fillStyle = '#FFFF00';
             for (let i = 0; i < canvas.width; i += 40) {
                 ctx.fillRect(i, canvas.height - 82, 20, 4);
             }
-            
+
             // Sidewalks
             ctx.fillStyle = '#D3D3D3';
             ctx.fillRect(0, canvas.height - 140, canvas.width, 20);  // Top sidewalk
             ctx.fillRect(0, canvas.height - 40, canvas.width, 20);   // Bottom sidewalk
-            
+
             // Green grass area after bottom sidewalk
             ctx.fillStyle = '#32CD32';  // Bright green grass
             ctx.fillRect(0, canvas.height - 20, canvas.width, 20);
-            
+
             // Police station
             ctx.fillStyle = '#4169E1';
             ctx.fillRect(20, canvas.height - 200, 100, 60);
@@ -840,6 +840,7 @@
 
         setInterval(() => {
             if (Math.random() > 0.15) spawnPerson();
+            if (Math.random() > 0.5) spawnPerson();
             if (Math.random() > 0.5) spawnPerson();
         }, 900);
 
